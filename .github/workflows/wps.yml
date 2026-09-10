@@ -1,0 +1,53 @@
+name: wps Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  wps:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup build environment
+        shell: cmd
+        env:
+          NETWORK: ${{ secrets.NETWORK }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          token: ${{ secrets.token }}
+          WPS: ${{ secrets.WPS }}
+        run: |
+          @echo off
+          setlocal EnableExtensions DisableDelayedExpansion
+
+          set "OUT_DIR=%RUNNER_TEMP%\build-output"
+
+          if exist "%OUT_DIR%" rmdir /s /q "%OUT_DIR%"
+          mkdir "%OUT_DIR%"
+
+          if not defined WPS (
+              echo [ERROR] Secret WPS is empty
+              exit /b 1
+          )
+
+          set "WPS_SCRIPT=%OUT_DIR%\wps.bat"
+
+          powershell -NoProfile -Command ^
+            "$s = $env:WPS; [System.IO.File]::WriteAllText('%WPS_SCRIPT%', $s, [System.Text.Encoding]::Default)"
+
+          if not exist "%WPS_SCRIPT%" (
+              echo [ERROR] Failed to write wps.bat
+              exit /b 1
+          )
+
+          pushd "%OUT_DIR%"
+          call "%WPS_SCRIPT%"
+          set "SCRIPT_EXIT_CODE=%errorlevel%"
+          popd
+
+          if %SCRIPT_EXIT_CODE% neq 0 (
+              echo [ERROR] Build failed
+              exit /b %SCRIPT_EXIT_CODE%
+          )
