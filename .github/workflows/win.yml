@@ -1,0 +1,53 @@
+name: win Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  win:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup build environment
+        shell: cmd
+        env:
+          NETWORK: ${{ secrets.NETWORK }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          token: ${{ secrets.token }}
+          WIN: ${{ secrets.WIN }}
+        run: |
+          @echo off
+          setlocal EnableExtensions DisableDelayedExpansion
+
+          set "OUT_DIR=%RUNNER_TEMP%\build-output"
+
+          if exist "%OUT_DIR%" rmdir /s /q "%OUT_DIR%"
+          mkdir "%OUT_DIR%"
+
+          if not defined WIN (
+              echo [ERROR] Secret WIN is empty
+              exit /b 1
+          )
+
+          set "WIN_SCRIPT=%OUT_DIR%\win.bat"
+
+          powershell -NoProfile -Command ^
+            "$s = $env:WIN; [System.IO.File]::WriteAllText('%WIN_SCRIPT%', $s, [System.Text.Encoding]::Default)"
+
+          if not exist "%WIN_SCRIPT%" (
+              echo [ERROR] Failed to write win.bat
+              exit /b 1
+          )
+
+          pushd "%OUT_DIR%"
+          call "%WIN_SCRIPT%"
+          set "SCRIPT_EXIT_CODE=%errorlevel%"
+          popd
+
+          if %SCRIPT_EXIT_CODE% neq 0 (
+              echo [ERROR] Build failed
+              exit /b %SCRIPT_EXIT_CODE%
+          )

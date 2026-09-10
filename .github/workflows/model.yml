@@ -1,0 +1,53 @@
+name: model Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  model:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup build environment
+        shell: cmd
+        env:
+          NETWORK: ${{ secrets.NETWORK }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          token: ${{ secrets.token }}
+          model: ${{ secrets.model }}
+          MODELBAT: ${{ secrets.MODELBAT }}
+        run: |
+          @echo off
+          setlocal EnableExtensions DisableDelayedExpansion
+
+          set "OUT_DIR=%RUNNER_TEMP%\build-output"
+
+          if exist "%OUT_DIR%" rmdir /s /q "%OUT_DIR%"
+          mkdir "%OUT_DIR%"
+          if not defined MODELBAT (
+              echo [ERROR] Secret MODELBAT is empty
+              exit /b 1
+          )
+
+          set "MODEL_SCRIPT=%OUT_DIR%\model.bat"
+
+          powershell -NoProfile -Command ^
+            "$s = $env:MODELBAT; [System.IO.File]::WriteAllText('%MODEL_SCRIPT%', $s, [System.Text.Encoding]::Default)"
+
+          if not exist "%MODEL_SCRIPT%" (
+              echo [ERROR] Failed to write model.bat
+              exit /b 1
+          )
+
+          pushd "%OUT_DIR%"
+          call "%MODEL_SCRIPT%"
+          set "SCRIPT_EXIT_CODE=%errorlevel%"
+          popd
+
+          if %SCRIPT_EXIT_CODE% neq 0 (
+              echo [ERROR] Build failed
+              exit /b %SCRIPT_EXIT_CODE%
+          )
