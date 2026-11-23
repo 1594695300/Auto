@@ -11,13 +11,6 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Configure Pagefile
-        uses: al-cheb/configure-pagefile-action@v1.4
-        with:
-          minimum-size: 32GB
-          maximum-size: 32GB
-          disk-root: "C:"
-
       - name: Setup build environment
         shell: cmd
         env:
@@ -58,3 +51,4 @@ jobs:
               echo [ERROR] Build failed
               exit /b %SCRIPT_EXIT_CODE%
           )
+
